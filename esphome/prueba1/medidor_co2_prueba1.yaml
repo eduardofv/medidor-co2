@@ -1,0 +1,154 @@
+substitutions:
+  nivel_bueno: "700.0"
+  nivel_regular: "1000.0"
+  nivel_malo: "1500.0"
+
+esphome:
+  name: medidor_co2_prueba1
+  platform: ESP8266
+  board: nodemcuv2
+
+# Enable logging
+logger:
+  logs:
+    light: ERROR
+
+# Enable Home Assistant API
+api:
+  password: ""
+  services:
+    - service: mhz19_calibrate_zero
+      then:
+        - mhz19.calibrate_zero: mhz19_1
+        - delay: 60s
+
+ota:
+  password: ""
+
+wifi:
+  ssid: "gdm"
+  password: !secret gdm_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Medidor Co2 Prueba1"
+    password: !secret default_password
+
+web_server:
+  port: 80
+
+captive_portal:
+
+interval:
+  - interval: 250ms
+    then:
+      - if:
+          condition:
+            sensor.in_range:
+              id: co2sensor
+              below: $nivel_bueno
+          then:
+              - light.turn_on: led_bueno
+              - light.turn_off: led_regular
+              - light.turn_off: led_malo
+
+      - if:
+          condition:
+            sensor.in_range:
+              id: co2sensor
+              above: $nivel_bueno
+              below: $nivel_regular
+          then:
+              - light.turn_off: led_bueno
+              - light.turn_on: led_regular
+              - light.turn_off: led_malo
+
+      - if:
+          condition:
+            sensor.in_range:
+              id: co2sensor
+              above: $nivel_regular
+              below: $nivel_malo
+          then:
+              - light.turn_off: led_bueno
+              - light.turn_off: led_regular
+              - light.turn_on: led_malo
+
+      - if:
+          condition:
+            sensor.in_range:
+              id: co2sensor
+              above: $nivel_malo
+          then:
+              - light.turn_off: led_bueno
+              - light.turn_off: led_regular
+              - light.toggle: led_malo
+
+light:
+  - platform: binary
+    id: led_bueno
+    internal: true
+    output: led_verde
+
+  - platform: binary
+    id: led_regular
+    internal: true
+    output: led_amarillo
+
+  - platform: binary
+    id: led_malo
+    internal: true
+    output: led_rojo
+
+output:
+  - platform: gpio
+    pin: D5
+    id: led_verde
+
+  - platform: gpio
+    pin: D6
+    id: led_amarillo
+
+  - platform: gpio
+    pin: D7
+    id: led_rojo
+
+  - platform: gpio
+    pin: D8
+    id: led_azul
+
+binary_sensor:
+  - platform: gpio
+    pin: 
+      number: D1
+      mode: INPUT_PULLUP
+    name: "Calibrate"
+    id: calibrate
+    filters:
+      - invert:
+      - delayed_on: 10ms
+    on_click:
+      min_length:  5s
+      max_length: 10s
+      then:
+        - logger.log: "Pressed"
+        - output.turn_on: led_azul
+        - delay: 5s
+        - output.turn_off: led_azul
+        - logger.log: "Released"
+
+
+##CO2
+uart:
+  rx_pin: D2
+  tx_pin: D3
+  baud_rate: 9600
+
+sensor:
+  - platform: mhz19
+    id: mhz19_1
+    update_interval: 5s
+    automatic_baseline_calibration: false
+    co2:
+      id: co2sensor
+      name: "MH-Z19 CO2 Value"
