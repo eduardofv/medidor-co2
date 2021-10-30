@@ -128,8 +128,8 @@ binary_sensor:
       - invert:
       - delayed_on: 10ms
     on_click:
-      min_length:  5s
-      max_length: 10s
+      min_length:  3s
+      max_length: 7s
       then:
         - logger.log: "Pressed"
         - output.turn_on: led_azul
