@@ -1,19 +1,45 @@
 substitutions:
-  nivel_bueno: "700.0"
-  nivel_regular: "1000.0"
-  nivel_malo: "1500.0"
+  nombre_dispositivo: medidor-co2-prueba1
 
+  # configuacion Wifi local y el portal cautivo (primera conexion)
+  # si se usa archivo de secretos sustituir por esas variables
+  ssid: "gdm" #!secret gdm_password
+  ssid_password: "" #!secret gdm_password
+  ap_password: "" #!secret default_password
+    
+  # niveles maximos por tipo de lectura
+  # por arriba del nivel malo se considera muy malo
+  nivel_bueno: "700.0"     # recomendado: 700
+  nivel_regular: "850.0"   # recomendado: 1000
+  nivel_malo: "1000.0"     # recomendado: 2000
+
+  # cada cuando se actualiza la medición del sensor de CO2
+  tiempo_actualizacion: 5s
+  # tiempo que se deja presionado el boton de calibrar para iniciar el proceso
+  tiempo_boton_calibrar: 10s
+  # cuanto tiempo se debe dejar al aire libre para hacer la calibracion
+  # la hoja de datos del MH-Z19C indica 20 minutos
+  tiempo_calibracion: 30s #20min
+  # Ejecutar el proceso de autocalibracion. Revisar su uso en la hoja de datos
+  #   si el medidor va a estar en funcionamiento continuo (no se apaga nunca)
+  #   en interiores de casas, oficinas, etc se puede habilitar
+  autocalibracion: "false"
+
+
+# Configuracion del MCU
 esphome:
-  name: medidor_co2_prueba1
+  name: $nombre_dispositivo
   platform: ESP8266
   board: nodemcuv2
 
-# Enable logging
+
+# Habilitar logging pero restringir las de las luces
 logger:
   logs:
     light: ERROR
 
-# Enable Home Assistant API
+
+# Haboilitar Home Assistant API
 api:
   password: ""
   services:
@@ -22,84 +48,70 @@ api:
         - mhz19.calibrate_zero: mhz19_1
         - delay: 60s
 
+
 ota:
   password: ""
 
+
 wifi:
-  ssid: "gdm"
-  password: !secret gdm_password
+  ssid: $ssid
+  password: $ssid_password
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
+  # Habilitar el hotspot (portal cautivo) en caso de que la conexion wifi falle
   ap:
-    ssid: "Medidor Co2 Prueba1"
-    password: !secret default_password
+    ssid: $nombre_dispositivo
+    password: $ap_password 
+
 
 web_server:
   port: 80
 
+
 captive_portal:
 
-interval:
-  - interval: 250ms
-    then:
-      - if:
-          condition:
-            sensor.in_range:
-              id: co2sensor
-              below: $nivel_bueno
-          then:
-              - light.turn_on: led_bueno
-              - light.turn_off: led_regular
-              - light.turn_off: led_malo
 
-      - if:
-          condition:
-            sensor.in_range:
-              id: co2sensor
-              above: $nivel_bueno
-              below: $nivel_regular
-          then:
-              - light.turn_off: led_bueno
-              - light.turn_on: led_regular
-              - light.turn_off: led_malo
+# Hardware del medidor de CO2
 
-      - if:
-          condition:
-            sensor.in_range:
-              id: co2sensor
-              above: $nivel_regular
-              below: $nivel_malo
-          then:
-              - light.turn_off: led_bueno
-              - light.turn_off: led_regular
-              - light.turn_on: led_malo
+# bandera de estado de calibracion
+globals:
+  - id: calibrando
+    type: bool
+    restore_value: no
+    initial_value: 'false'
 
-      - if:
-          condition:
-            sensor.in_range:
-              id: co2sensor
-              above: $nivel_malo
-          then:
-              - light.turn_off: led_bueno
-              - light.turn_off: led_regular
-              - light.toggle: led_malo
-
+# configuracion de luces
 light:
   - platform: binary
     id: led_bueno
     internal: true
     output: led_verde
+    effects:
+      - strobe:
 
   - platform: binary
     id: led_regular
     internal: true
     output: led_amarillo
+    effects:
+      - strobe:
 
   - platform: binary
     id: led_malo
     internal: true
     output: led_rojo
+    effects:
+      - strobe:
 
+  - platform: binary
+    id: led_status
+    internal: true
+    output: led_azul
+    effects:
+      - strobe:
+
+
+# configuracion del hardware de conexiones de LEDs al MCU
 output:
   - platform: gpio
     pin: D5
@@ -117,28 +129,51 @@ output:
     pin: D8
     id: led_azul
 
+
+# configuracion del boton de calibracion
 binary_sensor:
   - platform: gpio
+    name: "Boton Calibrar"
+    id: boton_calibrar
     pin: 
       number: D1
       mode: INPUT_PULLUP
-    name: "Calibrate"
-    id: calibrate
     filters:
       - invert:
-      - delayed_on: 10ms
-    on_click:
-      min_length:  3s
-      max_length: 7s
+      - delayed_on: $tiempo_boton_calibrar
+    on_press:
       then:
-        - logger.log: "Pressed"
-        - output.turn_on: led_azul
-        - delay: 5s
-        - output.turn_off: led_azul
-        - logger.log: "Released"
+        - logger.log: "Iniciando calibracion"
+        - lambda: |- 
+            id(calibrando) = true;
+        - light.turn_on:
+            id: led_status
+            effect: strobe
+        - light.turn_on:
+            id: led_bueno
+            effect: strobe
+        - light.turn_on:
+            id: led_regular
+            effect: strobe
+        - light.turn_on:
+            id: led_malo
+            effect: strobe
+        - delay: $tiempo_calibracion
+        - light.turn_off:
+            id: led_status
+        - light.turn_off:
+            id: led_bueno
+        - light.turn_off:
+            id: led_regular
+        - light.turn_off:
+            id: led_malo
+        - mhz19.calibrate_zero: mhz19_1
+        - lambda: |- 
+            id(calibrando) = false;
+        - logger.log: "Terminando calibracion"
 
 
-##CO2
+## Sensor de CO2
 uart:
   rx_pin: D2
   tx_pin: D3
@@ -147,8 +182,41 @@ uart:
 sensor:
   - platform: mhz19
     id: mhz19_1
-    update_interval: 5s
-    automatic_baseline_calibration: false
+    update_interval: $tiempo_actualizacion
+    automatic_baseline_calibration: $autocalibracion
     co2:
       id: co2sensor
       name: "MH-Z19 CO2 Value"
+      on_value:
+        - if:
+            condition:
+              lambda: 'return !id(calibrando) && x < $nivel_bueno;'
+            then:
+              - light.turn_on: led_bueno
+              - light.turn_off: led_regular
+              - light.turn_off: led_malo
+        - if:
+            condition:
+              lambda: 'return !id(calibrando) && (x >= $nivel_bueno) && (x < $nivel_regular);'
+            then:
+              - light.turn_off: led_bueno
+              - light.turn_on: led_regular
+              - light.turn_off: led_malo
+        - if:
+            condition:
+              lambda: 'return !id(calibrando) && (x >= $nivel_regular) && (x < $nivel_malo);'
+            then:
+              - light.turn_off: led_bueno
+              - light.turn_off: led_regular
+              - light.turn_off: led_malo
+              - light.turn_on: led_malo
+        - if:
+            condition:
+              lambda: 'return !id(calibrando) && x >= $nivel_malo;'
+            then:
+              - light.turn_off: led_bueno
+              - light.turn_off: led_regular
+              - light.turn_off: led_malo
+              - light.turn_on: 
+                  id: led_malo
+                  effect: strobe
