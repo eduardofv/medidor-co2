@@ -1,29 +1,34 @@
 substitutions:
   nombre_dispositivo: medidor-co2-prueba1
 
+  # niveles maximos por tipo de lectura
+  # por arriba del nivel malo se considera muy malo
+  nivel_bueno: "700.0"     # recomendado: 700
+  nivel_regular: "1000.0"   # recomendado: 1000
+  nivel_malo: "2000.0"     # recomendado: 2000
+
+  # cada cuando se actualiza la medición del sensor de CO2
+  tiempo_actualizacion: 5s
+
+  # tiempo que se deja presionado el boton de calibrar para iniciar el proceso
+  tiempo_boton_calibrar: 10s
+
+  # cuanto tiempo se debe dejar al aire libre para hacer la calibracion
+  # la hoja de datos del MH-Z19C indica 20 minutos
+  tiempo_calibracion: 20min #20min
+
+  # Ejecutar el proceso de autocalibracion. Revisar su uso en la hoja de datos
+  #   si el medidor va a estar en funcionamiento continuo (no se apaga nunca)
+  #   en interiores de casas, oficinas, etc se puede habilitar
+  autocalibracion: "false"
+
+  
   # configuacion Wifi local y el portal cautivo (primera conexion)
   # si se usa archivo de secretos sustituir por esas variables
   ssid: "gdm" #!secret gdm_password
   ssid_password: "" #!secret gdm_password
   ap_password: "" #!secret default_password
     
-  # niveles maximos por tipo de lectura
-  # por arriba del nivel malo se considera muy malo
-  nivel_bueno: "700.0"     # recomendado: 700
-  nivel_regular: "850.0"   # recomendado: 1000
-  nivel_malo: "1000.0"     # recomendado: 2000
-
-  # cada cuando se actualiza la medición del sensor de CO2
-  tiempo_actualizacion: 5s
-  # tiempo que se deja presionado el boton de calibrar para iniciar el proceso
-  tiempo_boton_calibrar: 10s
-  # cuanto tiempo se debe dejar al aire libre para hacer la calibracion
-  # la hoja de datos del MH-Z19C indica 20 minutos
-  tiempo_calibracion: 30s #20min
-  # Ejecutar el proceso de autocalibracion. Revisar su uso en la hoja de datos
-  #   si el medidor va a estar en funcionamiento continuo (no se apaga nunca)
-  #   en interiores de casas, oficinas, etc se puede habilitar
-  autocalibracion: "false"
 
 
 # Configuracion del MCU
@@ -220,3 +225,4 @@ sensor:
               - light.turn_on: 
                   id: led_malo
                   effect: strobe
+
