@@ -189,6 +189,9 @@ sensor:
     id: mhz19_1
     update_interval: $tiempo_actualizacion
     automatic_baseline_calibration: $autocalibracion
+    temperature: 
+      id: temp
+      name: "MH-Z19 Temperature"
     co2:
       id: co2sensor
       name: "MH-Z19 CO2 Value"
