@@ -1,4 +1,4 @@
-# Un medidor de CO2 que puedes hacer tú mismo
+# Un medidor de CO<sub>2</sub> que puedes hacer tú mismo
 
 Cómo hacer un medidor de CO2 mínimo en requerimientos y costos, con partes que se pueden conseguir en México.
 
