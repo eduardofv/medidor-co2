@@ -1,4 +1,4 @@
-# Un medidor de CO<sub>2</sub> que puedes hacer tú mismo
+# Un medidor de CO<sub>2</sub> que puedes hacer tu mismo
 
 Cómo hacer un medidor de CO2 mínimo en requerimientos y costos, con partes que se pueden conseguir en México.
 
@@ -33,7 +33,7 @@ Primero una **advetencia**: si lo que se requiere es una medición mas exacta y 
 Dicho esto el presente proyecto tiene la intención de enseñar la importancia de la ventilación y de construir un medidor básico de CO2 que pueda servir como un proyecto de ciencias y tecnología sencillo y con cierta utilidad práctica. Sin embargo, inisito en que no es un medidor homologado y no se debe confiar únicamente en el para tomar decisiones de seguridad.
 
 
-### Modelo actual:
+### Modelo actual
 
 
 
