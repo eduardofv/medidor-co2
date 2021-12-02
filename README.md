@@ -35,7 +35,7 @@ Dicho esto el presente proyecto tiene la intención de enseñar la importancia d
 
 ### Modelo actual básico
 
-![diagrama protoboard](./doc/assets/nodemcu-3led_bb.png)
+![diagrama protoboard](./doc/assets/images/nodemcu-3led_bb.png)
 
 
 
