@@ -12,6 +12,14 @@ substitutions:
 
   # tiempo que se deja presionado el boton de calibrar para iniciar el proceso
   tiempo_boton_calibrar: 10s
+  tiempo_boton_calibrar_max: 15s
+
+  # tiempo que se deja presionado el boton de calibrar para iniciar el proceso
+  tiempo_boton_usar_leds: 250ms
+  tiempo_boton_usar_leds_max: 2s
+  
+  #Tiempo encendido/apagado del led de status 
+  tiempo_strobe: 100ms
 
   # cuanto tiempo se debe dejar al aire libre para hacer la calibracion
   # la hoja de datos del MH-Z19C indica 20 minutos
@@ -26,7 +34,7 @@ substitutions:
   # configuacion Wifi local y el portal cautivo (primera conexion)
   # si se usa archivo de secretos sustituir por esas variables
   ssid: "gdm" #!secret gdm_password
-  ssid_password: "" #!secret gdm_password
+  ssid_password: !secret gdm_password
   ap_password: "" #!secret default_password
     
 
@@ -85,6 +93,12 @@ globals:
     restore_value: no
     initial_value: 'false'
 
+#bandera para mostrar (encender) los leds o no
+  - id: usar_leds
+    type: bool
+    restore_value: no
+    initial_value: 'true'
+
 # configuracion de luces
 light:
   - platform: binary
@@ -114,7 +128,17 @@ light:
     output: led_azul
     effects:
       - strobe:
+      - strobe:
+          name: "strobe_rapido"
+          colors:
+            - state: true
+              duration: $tiempo_strobe
+            - state: false
+              duration: $tiempo_strobe
 
+  - platform: status_led
+    name: "Status Led"
+    pin: D2
 
 # configuracion del hardware de conexiones de LEDs al MCU
 output:
@@ -145,37 +169,52 @@ binary_sensor:
       mode: INPUT_PULLUP
     filters:
       - invert:
-      - delayed_on: $tiempo_boton_calibrar
-    on_press:
-      then:
-        - logger.log: "Iniciando calibracion"
-        - lambda: |- 
-            id(calibrando) = true;
-        - light.turn_on:
-            id: led_status
-            effect: strobe
-        - light.turn_on:
-            id: led_bueno
-            effect: strobe
-        - light.turn_on:
-            id: led_regular
-            effect: strobe
-        - light.turn_on:
-            id: led_malo
-            effect: strobe
-        - delay: $tiempo_calibracion
-        - light.turn_off:
-            id: led_status
-        - light.turn_off:
-            id: led_bueno
-        - light.turn_off:
-            id: led_regular
-        - light.turn_off:
-            id: led_malo
-        - mhz19.calibrate_zero: mhz19_1
-        - lambda: |- 
-            id(calibrando) = false;
-        - logger.log: "Terminando calibracion"
+    on_click:
+
+      #Encender o apagar los leds indicadores con el boton
+      - max_length: $tiempo_boton_usar_leds_max
+        then:
+          - logger.log: "Cambiando Leds"
+          - lambda: |-
+              id(usar_leds) = !id(usar_leds);
+          - light.turn_on: 
+              id: led_status
+              effect: strobe_rapido
+          - delay: $tiempo_actualizacion
+          - light.turn_off: led_status
+      
+      #Iniciar el proceso de calibracion
+      - min_length: $tiempo_boton_calibrar
+        max_length: $tiempo_boton_calibrar_max
+        then:
+          - logger.log: "Iniciando calibracion"
+          - lambda: |- 
+              id(calibrando) = true;
+          - light.turn_on:
+              id: led_status
+              effect: strobe
+          - light.turn_on:
+              id: led_bueno
+              effect: strobe
+          - light.turn_on:
+              id: led_regular
+              effect: strobe
+          - light.turn_on:
+              id: led_malo
+              effect: strobe
+          - delay: $tiempo_calibracion
+          - light.turn_off:
+              id: led_status
+          - light.turn_off:
+              id: led_bueno
+          - light.turn_off:
+              id: led_regular
+          - light.turn_off:
+              id: led_malo
+          - mhz19.calibrate_zero: mhz19_1
+          - lambda: |- 
+              id(calibrando) = false;
+          - logger.log: "Terminando calibracion"
 
 
 ## Sensor de CO2
@@ -198,21 +237,28 @@ sensor:
       on_value:
         - if:
             condition:
-              lambda: 'return !id(calibrando) && x < $nivel_bueno;'
+              lambda: 'return !id(usar_leds);'
+            then:
+              - light.turn_off: led_bueno
+              - light.turn_off: led_regular
+              - light.turn_off: led_malo
+        - if:
+            condition:
+              lambda: 'return !id(calibrando) && id(usar_leds) && x < $nivel_bueno;'
             then:
               - light.turn_on: led_bueno
               - light.turn_off: led_regular
               - light.turn_off: led_malo
         - if:
             condition:
-              lambda: 'return !id(calibrando) && (x >= $nivel_bueno) && (x < $nivel_regular);'
+              lambda: 'return !id(calibrando) && id(usar_leds) && (x >= $nivel_bueno) && (x < $nivel_regular);'
             then:
               - light.turn_off: led_bueno
               - light.turn_on: led_regular
               - light.turn_off: led_malo
         - if:
             condition:
-              lambda: 'return !id(calibrando) && (x >= $nivel_regular) && (x < $nivel_malo);'
+              lambda: 'return !id(calibrando) && id(usar_leds) && (x >= $nivel_regular) && (x < $nivel_malo);'
             then:
               - light.turn_off: led_bueno
               - light.turn_off: led_regular
@@ -220,7 +266,7 @@ sensor:
               - light.turn_on: led_malo
         - if:
             condition:
-              lambda: 'return !id(calibrando) && x >= $nivel_malo;'
+              lambda: 'return !id(calibrando) && id(usar_leds) && x >= $nivel_malo;'
             then:
               - light.turn_off: led_bueno
               - light.turn_off: led_regular
